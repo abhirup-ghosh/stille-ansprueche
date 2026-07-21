@@ -92,7 +92,7 @@ def download_repo() -> Path:
             continue
     raise RuntimeError(
         f"Could not download {REPO_URL} on branches {BRANCHES}. Last error: {last_err}. "
-        "Fallback per PLAN.md: download the repo manually into data/ifo/repo/."
+        "Fallback per docs/PLAN.md: download the repo manually into data/ifo/repo/."
     )
 
 

@@ -15,5 +15,5 @@ grounded strictly in an official/academic knowledge base, always linking to offi
 This is the final project for the DataTalksClub LLM Zoomcamp.
 
 Further sections (architecture, evaluation, how to run, rubric mapping) will be filled in as
-phases complete — see `PLAN.md` for the full implementation plan and `PROGRESS.md` for the
-running log.
+phases complete — see `docs/PLAN.md` for the full implementation plan and `docs/PROGRESS.md` for
+the running log.
