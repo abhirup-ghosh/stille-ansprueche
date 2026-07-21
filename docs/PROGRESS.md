@@ -18,3 +18,8 @@
   `urllib.robotparser`, every response cached under `data/raw_html/`. Result: 83 usable pages
   extracted, 49/502 benefits enriched (well above the plan's ≥30 success bar). Re-running the
   script is fully cached (~2s, all cache hits, identical output).
+- 2026-07-21: Phase 1c — final corpus built. Joined ifo records with enrichment into
+  `data/documents.jsonl`: 502 documents (all one chunk each — max composed text length was
+  4555 chars, under the 6000-char chunking threshold, so the chunker's split path is currently
+  untested on real data but covered by a synthetic unit test). 49/502 (9.8%) enriched. All
+  documents JSON-parse back into `Document`, no empty text, no duplicate ids.
