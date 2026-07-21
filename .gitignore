@@ -6,3 +6,4 @@ data/raw_html/
 data/.llm_cache/
 .ipynb_checkpoints/
 .DS_Store
+.claude/

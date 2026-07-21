@@ -27,5 +27,12 @@ warranties regarding its licenses, any mate
 
 ## Portal enrichment (Phase 1b)
 
-See below (this section is appended by `src/enrich_portals.py`) for sozialplattform.de and
-familienportal.de attribution, once enrichment has run.
+- **sozialplattform.de** (federal social services portal, operated on behalf of the BMAS):
+  plain-language benefit description pages, discovered via `/sitemap.xml` and filtered to
+  benefit-name-token candidates. Fetched with a custom User-Agent and crawl-delay 10s per its
+  robots.txt.
+- **familienportal.de** (federal family portal, BMFSFJ): plain-language benefit description
+  pages, discovered via the sitemap index referenced in its robots.txt.
+- Both accessed under `robots.txt` permission, cached under `data/raw_html/` (git-ignored),
+  content used only as short excerpts appended to the corresponding benefit's corpus text.
+- **Result:** 49 / 502 benefits enriched with plain-language text.
