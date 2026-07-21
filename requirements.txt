@@ -1,0 +1,15 @@
+openai
+pydantic
+python-dotenv
+qdrant-client[fastembed]
+sentence-transformers
+requests
+beautifulsoup4
+pyyaml
+rapidfuzz
+pandas
+tqdm
+streamlit
+psycopg2-binary
+langdetect
+pytest

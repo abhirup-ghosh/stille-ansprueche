@@ -1,0 +1,9 @@
+.env
+PLAN.md
+.venv/
+__pycache__/
+*.pyc
+data/raw_html/
+data/.llm_cache/
+.ipynb_checkpoints/
+.DS_Store
