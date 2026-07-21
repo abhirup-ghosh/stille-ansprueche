@@ -15,3 +15,15 @@
   2. `docs/FOLLOWUP.md` was created to track two kinds of items outside PLAN.md's scope:
      **FOLLOWUP CHECKS** (things to verify later) and **OUT-OF-SCOPE** (deferred work). Both are
      to be revisited only after PLAN.md is fully implemented (i.e. after Phase 8).
+
+- **Phase 2:** two small adaptations to the plan's sketch of `src/index_qdrant.py`:
+  1. Sparse BM25 vectors are computed **client-side** with `fastembed.SparseTextEmbedding("Qdrant/bm25")`
+     rather than via Qdrant's server-side inference (`models.Document(text=..., model=...)` passed
+     directly as a point's vector). The installed `qdrant-client`/local `qdrant/qdrant:latest`
+     combination's server-side inference path wasn't verified to work out of the box, and
+     client-side computation is simpler to reason about and test; the resulting sparse vectors
+     are stored the same way either way (named vector `bm25`, IDF modifier).
+  2. Qdrant point ids must be an unsigned int or a UUID; our slug-style document ids (e.g.
+     `wohngeld-3f2a`) are neither, so each point's id is a `uuid.uuid5` deterministically derived
+     from the document id. The original id is unaffected in the payload (`payload["id"]`), which
+     is what all downstream code (search, eval, RAG) reads.

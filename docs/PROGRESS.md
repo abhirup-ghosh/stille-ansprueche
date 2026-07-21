@@ -23,3 +23,16 @@
   4555 chars, under the 6000-char chunking threshold, so the chunker's split path is currently
   untested on real data but covered by a synthetic unit test). 49/502 (9.8%) enriched. All
   documents JSON-parse back into `Document`, no empty text, no duplicate ids.
+- 2026-07-21: Phase 2 — Qdrant indexing + five search modes complete. Added `qdrant` service to
+  `docker-compose.yml` (Docker Desktop wasn't running locally; started it). Dense embeddings via
+  `sentence-transformers` (`intfloat/multilingual-e5-small`, MPS device, "query: "/"passage: "
+  prefixes) and sparse BM25 via `fastembed` (`Qdrant/bm25`) computed client-side (not via Qdrant
+  server-side inference) and stored as named vectors `dense`/`bm25`. Qdrant point ids are
+  `uuid5`-derived from each document's slug id (Qdrant requires uint/UUID point ids; the
+  original id stays in the payload). `make index` → 502/502 points, confirmed idempotent via
+  `--keep`. All 5 `src/search.py` functions (`search_text`, `search_vector`, `search_hybrid`,
+  `search_hybrid_rerank`, `search_hybrid_rewritten` + `rewrite_query`) implemented with lazy
+  singleton model loading; smoke test (Wohngeld for a rent-subsidy query) passes and skips
+  cleanly when Qdrant is down (verified both ways). `search_hybrid_rerank` warm-state latency
+  ~0.2s per query (well under the 3s bar) — the first call in a process pays one-time model-load
+  cost (~30s), which is expected given lazy loading.
