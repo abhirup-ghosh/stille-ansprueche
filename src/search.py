@@ -167,5 +167,8 @@ def search_hybrid_rewritten(query: str, k: int = 10) -> list[dict]:
     return search_hybrid(rewritten, k=k)
 
 
-# Set once the retrieval evaluation in Phase 3 picks a winner; aliased here for use in rag.py.
-search_best = search_hybrid
+# Phase 3 retrieval evaluation winner (highest MRR@5 over all 1000 ground-truth questions,
+# de+en): plain dense vector search, MRR@5=0.173 vs. 0.164 for hybrid_rerank, the runner-up.
+# See data/eval/retrieval_results.csv and the README's "Retrieval evaluation" section for the
+# full comparison and interpretation.
+search_best = search_vector

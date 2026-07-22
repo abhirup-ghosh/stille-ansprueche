@@ -36,3 +36,17 @@
   cleanly when Qdrant is down (verified both ways). `search_hybrid_rerank` warm-state latency
   ~0.2s per query (well under the 3s bar) — the first call in a process pays one-time model-load
   cost (~30s), which is expected given lazy loading.
+- 2026-07-22: Phase 3 — ground truth + retrieval evaluation complete. Generated 1000 questions
+  (800 de / 200 en) from 200 sampled documents (49 enriched + 151 random ifo-only, seed 42),
+  cost $0.026. Evaluated all 5 strategies over all 1000 questions (Hit Rate@5/10, MRR@5/10, split
+  de/en/all — 15-row `data/eval/retrieval_results.csv`), cost $0.045 for `hybrid_rewritten`'s
+  per-question LLM rewrite calls. Refactored the naive first draft of `eval_retrieval.py` before
+  running it at full scale: it was calling every search function 2x per question (once for the
+  "de"/"en" split, again for "all", which is just their union) — fixed to search once per
+  question and slice results into subsets, avoiding wasted Qdrant/CrossEncoder/LLM work.
+  **Result: plain `search_vector` wins (MRR@5=0.173 all-lang)**, beating `hybrid` (0.125),
+  `hybrid_rerank` (0.164), and `hybrid_rewritten` (0.145) — `search_best` in `src/search.py`
+  updated accordingly. Root cause: the ground-truth questions are deliberately phrased without
+  the benefit's official name, so BM25 (`text` strategy, MRR@5=0.025) contributes mostly noise,
+  and naive RRF fusion in `hybrid` lets that noise drag vector-only performance down; reranking
+  recovers most but not all of the gap. Full interpretation in README "Retrieval evaluation".
