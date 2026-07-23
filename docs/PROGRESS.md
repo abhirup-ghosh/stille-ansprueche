@@ -93,7 +93,7 @@
   panel fails with "no default database configured"; (2) every panel target needs `"rawQuery":
   true, "editorMode": "code"` or the SQL plugin ignores `rawSql` entirely. Both fixed; final
   screenshot confirms all 8 panels populated with real data (17 conversations) and zero browser
-  console errors. Full detail in `docs/DEVIATIONS.md`.
+  console errors. Full detail folded into `docs/PLAN.md`'s Phase 6 section.
 - 2026-07-23: Phase 7 — full containerization + reproducibility rehearsal complete. Added
   `Dockerfile` (python:3.11-slim, pinned deps, pre-downloads the E5 + CrossEncoder models in a
   build layer) and the `app` service in `docker-compose.yml`. Pinned `requirements.txt` to exact
@@ -103,7 +103,7 @@
   state, not from continuing to work in the already-set-up repo directory: a nested-volume-in-
   read-only-mount bug (LLM cache), `make seed` assuming a local venv that doesn't exist in a
   docker-only environment, and `docker compose up -d` silently reusing a stale app image instead
-  of rebuilding. All three fixed (see `docs/DEVIATIONS.md` for detail); a third fully-fresh
+  of rebuilding. All three fixed (see `docs/PLAN.md`'s Phase 7 section for detail); a third fully-fresh
   clone then passed the whole sequence end-to-end, confirmed via `docker compose exec postgres
   psql` (row counts matched the seed exactly — no leftover state) and a real browser session
   (Playwright, installed temporarily then removed) against both the Streamlit app and the
@@ -131,3 +131,11 @@
   leaves the cloud-deployment bonus unclaimed, and lists (without self-awarding) candidate
   reasons for the open-ended extra-bonus points. Notebook was already empty, nothing to clear.
   Final `make test`: 9 passed.
+- 2026-07-23: Post-submission cleanup — `docs/DEVIATIONS.md` merged into `docs/PLAN.md` and
+  removed from the repo, per direct instruction. An initial attempt to add the merged content as
+  a new standalone section at the end of PLAN.md was rejected; the actual ask was to fold each
+  deviation into its relevant existing phase section in place instead (e.g. Phase 2's BM25/point-id
+  notes now sit inside Phase 2's own step 2, not in a separate list). Updated every cross-reference
+  to `docs/DEVIATIONS.md` in `README.md`, `docs/PROGRESS.md` (this file), and
+  `docs/README_PROJECT_EVALUATION.md` to point at the relevant `docs/PLAN.md` phase section
+  instead. `make test`: 9 passed, unaffected.

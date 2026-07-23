@@ -5,7 +5,10 @@
 > executed by Claude Code (or any coding agent) **sequentially, phase by phase, without
 > improvisation**. Every technology choice, file name, schema, and acceptance criterion is
 > pinned. If something in this plan conflicts with reality (e.g., a URL is dead, a library
-> API changed), fix it minimally, document the deviation in `DEVIATIONS.md`, and continue.
+> API changed), fix it minimally and record what actually happened directly in the relevant
+> phase section below, and continue. (This document was updated in place as the project was
+> built — every phase section below reflects what was actually done, including where reality
+> forced a change from the original instruction.)
 
 ---
 
@@ -68,8 +71,9 @@ rubric mapping that the README must contain).
 10. **Testing:** each phase lists acceptance checks. Implement them as pytest tests in
     `tests/` where marked `[test]`, otherwise as manual commands. Run `make test` before every
     phase-end commit.
-11. **Keep a running log** in `PROGRESS.md`: one dated bullet per completed phase, plus any
-    deviations (also mirrored in `DEVIATIONS.md`).
+11. **Keep a running log** in `docs/PROGRESS.md`: one dated bullet per completed phase, plus any
+    deviations (recorded directly in the relevant phase section of this plan, not a separate
+    deviations file — see the note in the header above).
 
 ---
 
@@ -113,14 +117,21 @@ via the compose file's `environment:` section (compose service names as hosts).
 
 ---
 
-## 3. Repository layout (create exactly this)
+## 3. Repository layout
+
+As actually built (deviates from the original "create exactly this" instruction only in where
+the planning docs live — see the note at the end of this list):
 
 ```
 stille-ansprueche/
 ├── README.md                  # written incrementally; finalized in Phase 8
-├── PLAN.md                    # this file, committed as-is
-├── PROGRESS.md                # running log
-├── DEVIATIONS.md              # only if deviations happen
+├── docs/
+│   ├── PLAN.md                 # this file — moved here from root, see note below
+│   ├── PROGRESS.md              # running log — moved here from root
+│   ├── FOLLOWUP.md              # tracks post-submission follow-ups, outside this plan's scope
+│   ├── README_PROJECT_EVALUATION.md  # rubric-by-rubric evidence mapping for reviewers (Phase 8)
+│   ├── screenshot_app.png       # Phase 8
+│   └── screenshot_grafana.png   # Phase 8
 ├── LICENSE                    # MIT for the code
 ├── .env.example
 ├── .gitignore                 # .env, data/raw_html/, __pycache__, *.pyc, .venv, models cache
@@ -137,7 +148,7 @@ stille-ansprueche/
 │   └── eval/                  # eval result CSVs/JSONs (committed)
 ├── src/
 │   ├── __init__.py
-│   ├── config.py              # loads .env, exposes constants
+│   ├── config.py              # loads .env, exposes constants (incl. LLM_CACHE_DIR, added Phase 7)
 │   ├── llm.py                 # single OpenAI wrapper w/ cost tracking + disk cache
 │   ├── ingest_ifo.py          # Phase 1
 │   ├── enrich_portals.py      # Phase 1b
@@ -148,7 +159,8 @@ stille-ansprueche/
 │   ├── eval_retrieval.py      # Phase 3
 │   ├── rag.py                 # Phase 4: prompts + answer pipeline
 │   ├── eval_rag.py            # Phase 4
-│   └── db.py                  # Phase 5: postgres init + insert/read helpers
+│   ├── db.py                  # Phase 5: postgres init + insert/read helpers
+│   └── seed_traffic.py        # Phase 6: demo-traffic seeding for the dashboard
 ├── app/
 │   └── app.py                 # Streamlit UI
 ├── grafana/
@@ -163,6 +175,17 @@ stille-ansprueche/
     ├── test_search.py
     └── test_rag.py
 ```
+
+**Planning-doc location, by direct instruction from the human (before Phase 1b):** `PLAN.md`,
+`PROGRESS.md`, and (formerly) `DEVIATIONS.md` were moved into `docs/` instead of living at repo
+root as originally written above; `docs/FOLLOWUP.md` was added (outside this plan's original
+scope) to track two kinds of post-submission items — **FOLLOWUP CHECKS** (things to verify
+later, e.g. independently confirming the ifo inventory is complete) and **OUT-OF-SCOPE**
+(deferred work) — both meant to be revisited only after Phase 8 is done, not during the phased
+build-out. `docs/DEVIATIONS.md` briefly existed as a separate file tracking exactly this kind of
+"reality vs. plan" note, but was later merged into this document (in place, phase by phase) and
+removed, per a further direct instruction — this plan is now the single place both the intended
+plan and what actually happened when it met reality are recorded.
 
 ---
 
@@ -180,9 +203,13 @@ Steps:
    __pycache__/
    *.pyc
    data/raw_html/
+   data/.llm_cache/
    .ipynb_checkpoints/
    .DS_Store
+   .claude/
    ```
+   (`data/.llm_cache/` and `.claude/` — the latter a local Claude Code harness artifact, not
+   project content — were added once those directories actually appeared.)
 4. Write `.env.example` exactly as in §2. Copy to `.env` locally (agent: ask the human to fill
    `OPENAI_API_KEY`; do not proceed to Phase 3+ without it — Phases 0–2 work without it).
 5. Write `requirements.txt` (unpinned first; pin at end of Phase 8):
@@ -204,6 +231,9 @@ Steps:
    pytest
    ```
 6. Create venv: `python3.11 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`
+   (the dev machine had only Python 3.9.6 and no `gh` CLI installed; both were installed via
+   `brew install python@3.11 gh` before this step, with the human's confirmation since it's a
+   system-wide change.)
 7. Write `src/config.py`: loads `.env` via `python-dotenv`, exposes every env var from §2 as a
    module-level constant with the same name, plus `DATA_DIR = Path(__file__).parent.parent / "data"`.
 8. Write `src/llm.py` now (used from Phase 3 on):
@@ -211,9 +241,11 @@ Steps:
      `chat(messages: list[dict], model: str = config.LLM_MODEL, temperature: float = 0.0, response_model: Type[BaseModel] | None = None) -> tuple[Any, dict]`
      returning `(parsed_or_text, usage)` where `usage = {"prompt_tokens": int, "completion_tokens": int, "cost_usd": float}`.
    - Cost table (USD per 1M tokens) as a dict: `{"gpt-4o-mini": {"input": 0.15, "output": 0.60}}`.
-     (If actual pricing differs, update the dict and note it in DEVIATIONS.md.)
+     (If actual pricing differs, update the dict and note it here. In practice it didn't.)
    - Disk cache: SHA256 of `(model, temperature, json.dumps(messages))` → JSON file under
-     `data/.llm_cache/` (git-ignored — add to .gitignore). Cache hit returns cost 0.
+     `data/.llm_cache/` (git-ignored — add to .gitignore). Cache hit returns cost 0. (Phase 7:
+     the actual cache directory is `config.LLM_CACHE_DIR`, overridable via env var so it can be
+     relocated outside a read-only mount in Docker — see Phase 7.)
    - A module-level running total `TOTAL_COST_USD`, printed by an `atexit` hook.
 9. Write `Makefile` with (fill targets in as phases complete; create stubs now):
    `setup`, `ingest`, `index`, `ground-truth`, `eval-retrieval`, `eval-rag`, `app`, `test`,
@@ -226,7 +258,10 @@ Steps:
     `git remote add origin <url> && git push -u origin main`.
 
 **Acceptance criteria:**
-- `make test` runs pytest (0 tests, exit 0).
+- `make test` runs pytest (0 tests, exit 0). (In practice, pytest exits with code 5 — "no tests
+  collected" — when `tests/` has only empty placeholder files, which `make` otherwise treats as
+  a failure. The `test` Makefile target treats exit code 5 as success; this only matters while
+  the test files are empty, and is inert once Phase 1 adds real tests to `tests/test_corpus.py`.)
 - `python -c "from src import config, llm"` works.
 - Repo pushed to GitHub with all placeholder structure.
 
@@ -270,11 +305,19 @@ Steps (`src/ingest_ifo.py`):
    counts per law book, counts per primary target group.
 
 **Fallback:** if the GitHub repo is unreachable, stop and ask the human to download it
-manually into `data/ifo/`. Do not substitute another source.
+manually into `data/ifo/`. Do not substitute another source. (Not needed — the repo downloaded
+fine on the first try.)
+
+**As actually run:** the real repo has a single `sozialleistungen.yml` (not multiple files),
+21 law books, 502 entries — matching this paragraph's schema sketch almost exactly
+(`leistung`/`rechtsnorm`/`zielgruppen`/`themenfelder`), so the parser needed no schema
+adaptation. License confirmed CC-BY-SA-4.0. `name` is extracted as the text before the first
+`.`/`,` in `leistung` (e.g. "Wohngeld, Zuschuss zur Miete..." → "Wohngeld"), which was confirmed
+to split cleanly for the Phase 2 smoke test.
 
 **Acceptance criteria [test in tests/test_corpus.py]:**
 - ≥ 400 parsed records; every record has non-empty `name`, `legal_norm`, `law_book`,
-  ≥1 target group.
+  ≥1 target group. (Actual: 502/502 records, all fields populated, all ids unique.)
 - No duplicate `id`s.
 
 **Commit:** `phase 1a: ifo inventory ingestion`
@@ -307,7 +350,17 @@ Steps:
 4. Output `data/ifo/enrichment.jsonl`: `{benefit_id, url, title, text}`.
 5. Print: number of benefits enriched / total. **Any number ≥ 30 is a success.** If scraping
    is blocked entirely (robots.txt disallows, or persistent 403s): skip, write the fact into
-   DEVIATIONS.md and ATTRIBUTION.md, and continue with zero enrichments.
+   `data/ATTRIBUTION.md` and note it here, continuing with zero enrichments.
+
+**As actually run:** neither portal blocked scraping, so the fallback above wasn't needed.
+sozialplattform.de's own `/sitemap.xml` turned out to list 5138 URLs (not a small
+"Leistungen"-index page) — filtered down to candidates via the benefit-name-token heuristic
+*before* fetching any of them. familienportal.de's `/sitemap.xml` itself 404s; its robots.txt
+names the real sitemap index (one gzipped child sitemap, 127 URLs). Politeness: custom
+User-Agent, sozialplattform.de's robots.txt `Crawl-delay: 10` honored via `urllib.robotparser`
+(not just the ≥1.0s minimum), every response cached under `data/raw_html/`. Result: 117
+candidates after token filtering → 83 usable pages extracted → **49 / 502 benefits enriched**
+(9.8%), well above the ≥30 bar.
 
 **Acceptance criteria:**
 - Script completes without unhandled exceptions; cache directory populated; enrichment file
@@ -345,9 +398,14 @@ Steps (`src/build_corpus.py`):
 4. Write `data/documents.jsonl` (one JSON per line). Print corpus stats: docs, chunks,
    median text length, % enriched.
 
+**As actually run:** 502 documents, all single-chunk — the longest composed text (with
+enrichment appended) was 4555 chars, under the 6000-char chunking threshold, so the
+chunk-splitting path never triggered on real data (it's covered by a synthetic unit test
+instead). Median chunk length 310 chars; 49/502 (9.8%) enriched.
+
 **Acceptance criteria [test]:**
 - ≥ 400 documents; every document JSON-parses back into `Document`; no empty `text`;
-  no duplicate ids.
+  no duplicate ids. (Actual: 502 documents, all criteria met.)
 
 **Commit:** `phase 1c: final corpus built`
 
@@ -370,10 +428,20 @@ Steps:
      `torch.backends.mps.is_available()` else CPU.
    - Sparse vectors via fastembed BM25 (`models.Document(text=..., model="Qdrant/bm25")` in
      the point's sparse vector field — use the current qdrant-client API; check its docs/
-     docstrings if the API differs).
+     docstrings if the API differs). **As actually built:** computed **client-side** instead,
+     via `fastembed.SparseTextEmbedding("Qdrant/bm25")` directly in Python, rather than passing
+     `models.Document` for Qdrant server-side inference — the installed `qdrant-client`/local
+     `qdrant/qdrant:latest` combination's server-side inference path wasn't verified to work out
+     of the box, and client-side computation is simpler to reason about and test. The resulting
+     sparse vectors are stored identically either way (named vector `bm25`, IDF modifier).
    - Payload = the full document dict.
    - Recreate the collection idempotently (delete if exists, then create; guard with a
      `--keep` flag to skip reindexing when the point count already equals the chunk count).
+   - **Point ids (not in the original plan):** Qdrant point ids must be an unsigned int or a
+     UUID; the slug-style document ids (e.g. `wohngeld-3f2a`) are neither, so each point's id is
+     a `uuid.uuid5` deterministically derived from the document id. The original id is
+     unaffected in the payload (`payload["id"]`), which is what all downstream code (search,
+     eval, RAG) reads.
 3. `src/search.py` — all functions return `list[dict]` of payloads, length ≤ `k`:
    ```python
    def search_text(query: str, k: int = 10) -> list[dict]          # BM25 sparse only
@@ -389,9 +457,12 @@ Steps:
    that a document whose name contains `"Wohngeld"` appears in the top 5 of `search_hybrid`.
 
 **Acceptance criteria:**
-- `make index` completes; Qdrant reports point count == chunk count.
+- `make index` completes; Qdrant reports point count == chunk count. (Actual: 502/502, confirmed
+  idempotent via `--keep`.)
 - Smoke test passes.
-- `search_hybrid_rerank` returns in < 3 s on the M3 for a single query.
+- `search_hybrid_rerank` returns in < 3 s on the M3 for a single query. (Actual warm-state
+  latency ~0.2s; the first call in a fresh process pays a one-time model-load cost — expected,
+  given the lazy singleton loading in step 3.)
 
 **Commit:** `phase 2: qdrant indexing + five search modes`
 
@@ -426,6 +497,7 @@ comparing 5 retrieval strategies with Hit Rate and MRR.
 3. Write one row per question: `{"question": str, "lang": "de"|"en", "doc_id": parent doc id}`.
    Ground truth maps a question to its source document (course Module 3 methodology).
    Expected: 200 docs × 5 = 1,000 rows. Cost estimate: ~200 calls ≈ well under $0.50.
+   (Actual: exactly 1000 rows — 800 de, 200 en — cost $0.026.)
 
 ### 3b. Retrieval evaluation (`src/eval_retrieval.py`)
 1. Metrics (implement exactly; k=5 primary, also report k=10):
@@ -444,9 +516,23 @@ comparing 5 retrieval strategies with Hit Rate and MRR.
 4. **The best overall strategy (highest MRR@5, all languages) becomes `search_best` —**
    add `search_best = <winner>` alias in `src/search.py` and use it in the RAG flow.
 
+**As actually run:** the first draft of `eval_retrieval.py` called every search function twice
+per question (once each for the "de"/"en" split and again for "all", which is just their union)
+— caught and fixed before the full 1000-question × 5-strategy run, to search once per question
+and slice results into subsets instead. **Result: plain `vector` search won** (MRR@5 = 0.173
+overall), beating `hybrid` (0.125), `hybrid_rerank` (0.164), and `hybrid_rewritten` (0.145) —
+somewhat surprising, since hybrid/rerank/rewrite are usually expected to help. Root cause: the
+ground-truth questions are deliberately phrased without the benefit's official name (per the
+prompt above), so BM25 (`text`, MRR@5 = 0.025) contributes mostly noise, and naive RRF fusion in
+`hybrid` lets that noise drag vector-only performance down; reranking recovers most but not all
+of the gap. `search_best` in `src/search.py` was set to `search_vector` accordingly. Full
+interpretation in the README "Retrieval evaluation" section — this is reported as an honest
+negative-ish finding, not smoothed over.
+
 **Acceptance criteria:**
-- ground_truth.jsonl has ≥ 900 rows, ≥ 150 English.
-- retrieval_results.csv has 5 strategies × 3 lang rows (de/en/all) = 15 rows.
+- ground_truth.jsonl has ≥ 900 rows, ≥ 150 English. (Actual: 1000 rows, 200 English.)
+- retrieval_results.csv has 5 strategies × 3 lang rows (de/en/all) = 15 rows. (Actual: matches
+  exactly.)
 - README updated with the results table.
 
 **Commit:** `phase 3: ground truth + retrieval evaluation (5 strategies, cross-lingual)`
@@ -463,7 +549,9 @@ prompt variants; the winner is pinned for the app.
 class RagAnswer(BaseModel):
     answer: str
     benefits_mentioned: list[str]      # names of benefits the answer draws on
-    sources: list[dict]                # [{"name":..., "legal_norm":..., "official_url":...}]
+    sources: list[dict]                # [{"id":..., "name":..., "legal_norm":..., "official_url":...}]
+    # ("id" added beyond the original sketch — needed so the Streamlit app / Postgres logging
+    # can populate conversations.retrieved_ids without re-deriving ids from names.)
     model: str
     prompt_variant: str
     response_time_s: float
@@ -519,12 +607,21 @@ REGELN:
 6. Cost guard: 100 q × 3 variants × (1 answer + 2 judge calls) = 900 calls of gpt-4o-mini
    ≈ $1–2. All cached, so re-runs are free. Print total cost at the end.
 
+**As actually run:** cost $0.177 for the 900 calls (well under the $1–2 estimate). **Result:
+`einfache_sprache` won** (57% faithful) vs. `baseline` (41%) and `structured` (36%) —
+`PROMPT_VBEST` set accordingly. Relevance was high and similar across all three variants
+(80–91%), so retrieval quality (not prompt style) is the bottleneck there; faithfulness is what
+separated them — `einfache_sprache`'s short, simple sentences (mean 6.1 words) left much less
+room for the model to elaborate beyond the retrieved context than `structured`'s multi-section
+format (mean 17.2 words/sentence), which invited more inferred, less-grounded detail. Full
+interpretation in README "RAG evaluation".
+
 **Acceptance criteria:**
-- rag_results.csv has 300 answer rows, each with both judgments.
+- rag_results.csv has 300 answer rows, each with both judgments. (Actual: 300/300, all judged.)
 - README updated with the aggregate table and the declared winner.
 - `python -c "from src.rag import answer; print(answer('Ich bin Rentnerin mit sehr kleiner Rente und kann meine Miete kaum zahlen. Was steht mir zu?').answer)"`
   prints a German answer that mentions at least one plausible benefit and contains the
-  disclaimer sentence.
+  disclaimer sentence. (Confirmed.)
 
 **Commit:** `phase 4: RAG flow + 3-prompt evaluation with relevance & faithfulness judges`
 
@@ -585,10 +682,20 @@ Layout, top to bottom:
 4. Sidebar: choose prompt variant (default v_best), k (default 5), and a
    "show retrieved context" checkbox for debugging.
 
+**As actually built:** `app/app.py` inserts `sys.path.insert(0, <repo root>)` before importing
+`src.*` — caught during browser testing: `streamlit run app/app.py` sets `sys.path[0]` to
+`app/`'s own directory (not the repo root, unlike `python -m`), so `from src import db` raised
+`ModuleNotFoundError` at runtime despite working fine from every other entry point (`python -m
+src.*`, pytest). Verified end-to-end in a real (headless) browser via Playwright — installed
+temporarily into `.venv` for that check only, then uninstalled; it is not a project dependency
+and is not in `requirements.txt`. That session: submitted the smoke question, got a rendered
+answer + Quellen expander, clicked 👍, saw "Danke für dein Feedback!", zero console errors.
+
 **Acceptance criteria:**
 - `make up && make app` → UI answers the Phase 4 smoke question end-to-end; a row appears in
   `conversations`; clicking 👍 adds a row in `feedback` (verify with
   `docker compose exec postgres psql -U stille -d stille -c "select count(*) from conversations;"`).
+  (Confirmed via the browser session above.)
 
 **Commit:** `phase 5: streamlit app + postgres conversation/feedback logging`
 
@@ -604,7 +711,15 @@ Steps:
    `GF_SECURITY_ADMIN_PASSWORD=admin`, volumes mounting `./grafana/provisioning` to
    `/etc/grafana/provisioning` and `./grafana/dashboards` to `/var/lib/grafana/dashboards`).
 2. `grafana/provisioning/datasources/datasource.yml`: Postgres datasource pointing at service
-   `postgres:5432`, db/user/password from §2.
+   `postgres:5432`, db/user/password from §2. **As actually built:** the installed
+   `grafana/grafana:latest` (13.1.1) Postgres plugin needs `database: stille` nested under
+   `jsonData`, not only as a top-level key next to `url`/`user` — without it, every dashboard
+   panel fails with "You do not currently have a default database configured for this data
+   source", even though a manual `/api/ds/query` HTTP call against the same datasource UID
+   (bypassing the dashboard's own panel-rendering code) had returned real rows with the pre-fix
+   config. This gap is exactly why it was caught by opening the actual dashboard in a real
+   (headless) browser via Playwright (installed temporarily, then uninstalled) instead of
+   trusting an API-level smoke test alone.
 3. `grafana/provisioning/dashboards/dashboards.yml`: file provider loading
    `/var/lib/grafana/dashboards`.
 4. `grafana/dashboards/stille.json`: dashboard `Stille Ansprüche — Monitoring` with these
@@ -620,10 +735,15 @@ Steps:
 5. Generate ~30 rows of demo traffic so the dashboard isn't empty for reviewers: script
    `src/seed_traffic.py` that runs 15 random ground-truth questions through `rag.answer()`
    and random feedback; add `make seed`.
+   Also needed (not in the original plan): every panel target in `stille.json` needs
+   `"rawQuery": true, "editorMode": "code"` set, or the SQL datasource plugin ignores `rawSql`
+   entirely and tries to use the (empty) visual query builder instead — panels would silently
+   show no data.
 
 **Acceptance criteria:**
 - Fresh `docker compose up -d` → http://localhost:3000 (admin/admin) shows the dashboard with
-  all 8 panels populated after `make seed`.
+  all 8 panels populated after `make seed`. (Confirmed via a real browser screenshot with all 8
+  panels populated and zero console errors.)
 
 **Commit:** `phase 6: provisioned grafana dashboard (8 panels)`
 
@@ -643,7 +763,12 @@ Steps:
 2. docker-compose final state — services: `qdrant`, `postgres`, `grafana`, `app`
    (build: ., depends_on the others, env overrides `QDRANT_URL=http://qdrant:6333`,
    `POSTGRES_HOST=postgres`, pass `OPENAI_API_KEY` through from host env / `.env`).
-   `app` mounts `./data:/app/data` read-only so the corpus ships without rebuilding.
+   `app` mounts `./data:/app/data` read-only so the corpus ships without rebuilding. **As
+   actually built:** the LLM disk cache (`src/llm.py`) needs to write, so it's mounted as a
+   *separate*, non-nested named volume at `/app/llm_cache` (sibling of `/app/data`), with
+   `LLM_CACHE_DIR=/app/llm_cache` set for the `app` service and `src/config.py`/`src/llm.py`
+   reading that env var (defaulting to `data/.llm_cache` for local runs). See the rehearsal note
+   below for why nesting it inside `/app/data` instead doesn't work.
 3. Indexing inside compose: `make index-docker` =
    `docker compose run --rm app python -m src.index_qdrant`.
 4. Pin `requirements.txt` (`pip freeze` filtered to direct deps with `==` versions).
@@ -651,8 +776,34 @@ Steps:
    key, `make up && make index-docker && make seed`, open app + grafana, run one question.
    Fix anything that breaks; that is the point of this phase.
 
+**As actually run:** the literal fresh-clone rehearsal failed three separate ways on the first
+two attempts — none of which showed up earlier because the local repo directory already had the
+state each fix now handles generically:
+1. **Nested volume in a read-only mount doesn't work on a fresh host.** Mounting the LLM cache
+   nested at `/app/data/.llm_cache` (inside the read-only `./data:/app/data:ro` mount) worked
+   locally (where `data/.llm_cache/` already existed on the host from prior runs) but fails on a
+   truly fresh clone with "read-only file system" trying to create the mountpoint — Docker can't
+   create a directory inside an already-read-only bind mount. Fixed as described in step 2 above.
+2. **`make seed` assumed a local Python venv.** Its Makefile target originally activated
+   `.venv/bin/activate`, which doesn't exist on a fresh clone that only ever ran things through
+   Docker. Changed to `docker compose run --rm app python -m src.seed_traffic`, matching
+   `index-docker`'s pattern.
+3. **`docker compose up -d` silently reuses a stale image.** Compose only builds an image if one
+   doesn't already exist under the project's derived image name; re-running `make up` after a
+   code change (or, as tested here, a second fresh-clone attempt reusing the same directory
+   name) kept the *old* image without rebuilding. Fixed by changing the `up` Makefile target to
+   `docker compose up -d --build`.
+
+All three were only caught because the rehearsal was actually run to convergence from a clean
+`/tmp` clone (three attempts total) rather than trusting a single pass — a README/API-level
+check alone would have missed all of them. The third, fully-fresh attempt passed
+`make up && make index-docker && make seed` end-to-end, confirmed via `docker compose exec
+postgres psql` (row counts matched the seed exactly — no leftover state) and a real browser
+session (Playwright, installed temporarily then removed) against both the app and Grafana.
+
 **Acceptance criteria:**
-- The fresh-clone rehearsal passes start to finish following only README commands.
+- The fresh-clone rehearsal passes start to finish following only README commands. (Confirmed
+  on the third attempt, after the three fixes above.)
 
 **Commit:** `phase 7: full docker-compose + reproducibility rehearsal`
 
@@ -679,8 +830,16 @@ README structure (write fully):
 8. **Monitoring** (dashboard screenshot + panel list).
 9. **Rubric self-assessment table** (see below).
 10. **Cost report**: total OpenAI spend printed by llm.py across the project.
+    (Actual: **$0.28** total — computed exactly, not estimated, by summing token counts from
+    every unique cached call across every `.llm_cache` this project ever wrote to, local and
+    both Docker volumes, since the disk cache means a unique call only ever costs money once.
+    Breakdown: ground truth generation $0.026, retrieval-eval query rewriting $0.045, RAG
+    evaluation (answers + judges) $0.177, demo seeding across 3 runs $0.021, incidental manual
+    smoke tests ~$0.01.)
 11. **Limitations & future work**: enrichment coverage, no entitlement *calculation* (→
     GETTSIM), no application form filling (→ Beyond Forms), evaluation on synthetic questions.
+    (Also added: an open item to independently verify the ifo inventory's completeness — see
+    `docs/FOLLOWUP.md`.)
 
 **Rubric self-assessment table (include verbatim, verify each claim is true before writing):**
 
@@ -699,9 +858,26 @@ README structure (write fully):
 | Bonus: document re-ranking | 1 | CrossEncoder in `search_hybrid_rerank` |
 | Bonus: query rewriting | 1 | `rewrite_query` + evaluated as its own strategy |
 
+**As actually built — `docs/README_PROJECT_EVALUATION.md` (instruction outside this plan, given
+by the human before Phase 2):** the human asked, before Phase 2 started, for a standalone
+document mapping this project against the *actual* evaluation criteria at
+https://github.com/abhirup-ghosh/llm-zoomcamp/blob/main/project.md, so a reviewer can quickly
+check off each rubric line with evidence of where/how it's implemented. That real rubric mostly
+matches the placeholder table above (18 core + 3 best-practice points) but additionally has an
+explicit cloud-deployment bonus (marked unclaimed/0 here) and an open-ended "up to 3 extra"
+bonus (left to reviewer discretion in that document, with candidate reasons listed rather than
+presumptuously self-awarded). `docs/README_PROJECT_EVALUATION.md` is the authoritative,
+evidence-linked version; the table above and the condensed one in `README.md` summarize it.
+
 Also in Phase 8:
-- Add 2 screenshots (`docs/screenshot_app.png`, `docs/screenshot_grafana.png`).
-- Clear notebook outputs; final `make test` green; final push.
+- Add 2 screenshots (`docs/screenshot_app.png`, `docs/screenshot_grafana.png`) — taken via a
+  real headless browser (Playwright, installed temporarily then removed, not a project
+  dependency). Two screenshot-specific quirks hit and fixed along the way: Streamlit's chat view
+  auto-scrolls to the bottom (fixed by scrolling
+  `[data-testid="stAppScrollToBottomContainer"]` back to 0 before capturing), and Grafana's
+  dashboard-refresh websocket keeps Playwright's `networkidle` wait from ever resolving (fixed
+  by waiting for `"load"` plus an explicit element instead).
+- Clear notebook outputs (already empty — nothing to do); final `make test` green; final push.
 
 **Commit:** `phase 8: README, rubric mapping, screenshots — submission ready`
 
@@ -721,7 +897,14 @@ Also in Phase 8:
 
 ## 14. Known risks & pre-authorized fallbacks
 
-| Risk | Fallback (pre-authorized, log in DEVIATIONS.md) |
+**As it actually went: none of these risks materialized as written** — the ifo schema matched
+closely (Phase 1), neither portal blocked scraping (Phase 1b, 49/502 enriched), the mmarco
+reranker was fast enough (Phase 2, ~0.2s warm), and OpenAI's structured-output parse API worked
+throughout. The one item below that *did* need a real decision (sparse/hybrid via qdrant-client)
+was resolved for a different reason than "the API differs" — see Phase 2's "As actually built"
+note (client-side BM25 chosen for simplicity, not because the server-side path was broken).
+
+| Risk | Fallback (pre-authorized, logged directly in the relevant phase section above) |
 |---|---|
 | ifo YAML schema differs from §Phase 1a sketch | adapt parser to actual schema; keep `BenefitRecord` fields |
 | Portals block scraping | ship ifo-only corpus (still ≥400 docs); note in README limitations |
@@ -732,7 +915,10 @@ Also in Phase 8:
 
 ## 15. Definition of done
 
-- All 8 phase commits on `main`, pushed to GitHub.
-- Fresh-clone rehearsal (Phase 7) passes.
-- README rubric table claims 18 core + 3 bonus points, and every claim is verifiable in-repo.
-- Total OpenAI cost < $5 (expected < $3), reported in README.
+- All 8 phase commits on `main`, pushed to GitHub. ✅ (0, 1a, 1b, 1c, 2–8, all pushed to
+  https://github.com/abhirup-ghosh/stille-ansprueche)
+- Fresh-clone rehearsal (Phase 7) passes. ✅ (on the third attempt, after three fixes — see
+  Phase 7)
+- README rubric table claims 18 core + 3 bonus points, and every claim is verifiable in-repo. ✅
+  (21 total claimed; full evidence in `docs/README_PROJECT_EVALUATION.md`)
+- Total OpenAI cost < $5 (expected < $3), reported in README. ✅ ($0.28 actual, computed exactly)

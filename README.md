@@ -99,8 +99,8 @@ make seed          # optional: seeds ~15 demo conversations + feedback for the d
 
 `make up` always rebuilds the app image (`docker compose up -d --build`), so it also picks up
 code changes on re-runs. This exact sequence has been rehearsed end-to-end from a fresh `git
-clone` in an empty directory — see `docs/PROGRESS.md` / `docs/DEVIATIONS.md` (Phase 7) for the
-three bugs that rehearsal caught and fixed.
+clone` in an empty directory — see `docs/PROGRESS.md` and `docs/PLAN.md`'s Phase 7 section for
+the three bugs that rehearsal caught and fixed.
 
 For local (non-Docker) development: `make setup` (creates `.venv`, installs
 `requirements.txt`), then `make ingest` → `make index` → `make ground-truth` →
