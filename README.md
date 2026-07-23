@@ -2,17 +2,109 @@
 
 *Discover German social benefits (Sozialleistungen) you may be entitled to but don't know exist.*
 
-**Status:** under construction (Phase 7 — full containerization + reproducibility rehearsal complete).
+> See [`docs/README_PROJECT_EVALUATION.md`](docs/README_PROJECT_EVALUATION.md) for the full
+> rubric-by-rubric evaluation mapping — a fast path for reviewers.
+
+![Stille Ansprüche app screenshot](docs/screenshot_app.png)
 
 ## Problem
 
-Germany has 500+ distinct social benefits (ifo Institute inventory, 2025). Research (IAB, DIW,
-HRW, CityLAB Berlin) documents that 40–60% of eligible people never claim key benefits — mostly
-an *information* problem, not an eligibility problem. Stille Ansprüche is a RAG assistant: you
-describe your life situation in plain German or English, and it answers in plain language,
-grounded strictly in an official/academic knowledge base, always linking to official sources.
+Germany has 500+ distinct social benefits (Sozialleistungen), per the ifo Institute's 2025
+inventory of the country's welfare system. Decades of research from IAB and DIW, and a 2025
+Human Rights Watch report on burdensome application processes, converge on the same finding:
+a large share of eligible people — commonly cited at 40–60% for means-tested benefits like
+Grundsicherung im Alter — never claim what they're entitled to. This is documented as
+predominantly an *information* problem, not an eligibility problem: people don't know a benefit
+exists, don't know they qualify, or don't know where to start.
 
-This is the final project for the DataTalksClub LLM Zoomcamp.
+Stille Ansprüche ("silent entitlements") targets exactly that discovery gap. You describe your
+life situation in plain German or English — *"alleinerziehend, Teilzeit, zwei Kinder, Miete 900
+Euro — was steht mir zu?"* — and the assistant answers in plain language, grounded strictly in
+an official/academic knowledge base, always citing the legal basis and linking official sources.
+It does not calculate exact entitlement amounts (see Limitations) — it helps you discover which
+of the 500+ benefits are worth investigating further.
+
+The closest existing project, CityLAB Berlin's **Beyond Forms** (July 2026), covers exactly one
+benefit and focuses on *filling out its application form*. Stille Ansprüche is complementary and
+differently scoped: cross-benefit *discovery* across the entire landscape, not single-benefit
+form-filling. This is the final project for the DataTalksClub LLM Zoomcamp.
+
+## Dataset
+
+- **Primary source:** [ifo-institute/sozialleistungen](https://github.com/ifo-institute/sozialleistungen)
+  — a YAML inventory of German social benefits (21 law books, 502 entries), licensed
+  CC-BY-SA-4.0. See [`data/ATTRIBUTION.md`](data/ATTRIBUTION.md) for the full citation and
+  license text.
+- **Enrichment sources (best-effort):** [sozialplattform.de](https://sozialplattform.de) and
+  [familienportal.de](https://familienportal.de) (both official federal portals) — plain-language
+  descriptions scraped politely (custom User-Agent, robots.txt-respecting crawl delay, every
+  response cached) and matched to ifo entries by fuzzy title match. 49 / 502 benefits (9.8%)
+  were enriched this way.
+- **Corpus:** `data/documents.jsonl`, 502 documents (one per benefit; none needed chunk-splitting
+  — the longest composed document was 4555 chars, under the 6000-char threshold). Each line is a
+  JSON object:
+  ```json
+  {
+    "id": "wohngeld-3f2a",
+    "name": "Wohngeld",
+    "law_book": "WoGG",
+    "legal_norm": "§ 1 Zweck des Wohngeldes - WoGG, § 26 Zahlung des Wohngeldes - WoGG",
+    "category": "Wohnungsbeihilfe",
+    "target_groups": ["Jedes Alter"],
+    "topic_fields": ["Wohnen & Infrastruktur"],
+    "text": "Wohngeld. Zuschuss zur Miete... Rechtsgrundlage: ... Zielgruppen: ... Themen: ...",
+    "official_url": "https://sozialplattform.de/wohngeld-0",
+    "enriched": true
+  }
+  ```
+
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph Ingestion
+        A["ifo YAML\ninventory"] --> IF["ingest_ifo.py"]
+        B["sozialplattform.de\nfamilienportal.de"] --> EN["enrich_portals.py"]
+        IF --> BC["build_corpus.py"]
+        EN --> BC
+        BC --> DOC[("data/documents.jsonl")]
+    end
+
+    DOC --> IX["index_qdrant.py"]
+    IX --> QD[("Qdrant\ndense + BM25 sparse")]
+    QD <--> SR["search.py\ntext / vector / hybrid / rerank / rewrite"]
+    SR --> RAG["rag.py\ncontext -> gpt-4o-mini -> answer"]
+    RAG <-.-> OAI(("OpenAI\ngpt-4o-mini"))
+    RAG --> APP["Streamlit app"]
+    APP --> PG[("Postgres\nconversations + feedback")]
+    PG --> GRAF["Grafana\n8-panel dashboard"]
+```
+
+## How to run
+
+Requires Docker (with Compose) and an OpenAI API key.
+
+```bash
+git clone https://github.com/abhirup-ghosh/stille-ansprueche.git
+cd stille-ansprueche
+cp .env.example .env   # then edit .env and set OPENAI_API_KEY
+
+make up            # builds the app image and starts qdrant, postgres, grafana, app
+make index-docker  # embeds data/documents.jsonl (502 docs) into Qdrant
+make seed          # optional: seeds ~15 demo conversations + feedback for the dashboard
+```
+
+- App: http://localhost:8501
+- Grafana: http://localhost:3000 (admin/admin)
+
+`make up` always rebuilds the app image (`docker compose up -d --build`), so it also picks up
+code changes on re-runs. This exact sequence has been rehearsed end-to-end from a fresh `git
+clone` in an empty directory — see `docs/PROGRESS.md` / `docs/DEVIATIONS.md` (Phase 7) for the
+three bugs that rehearsal caught and fixed.
+
+For local (non-Docker) development: `make setup` (creates `.venv`, installs
+`requirements.txt`), then `make ingest` → `make index` → `make ground-truth` →
+`make eval-retrieval` → `make eval-rag` → `make app`. `make test` runs the pytest suite.
 
 ## Retrieval evaluation
 
@@ -89,27 +181,81 @@ judge penalizes most (36%, the worst of the three). `baseline` sits in between o
 faithfulness. In short: for this grounded-answer use case, verbosity and structure trade off
 against faithfulness more than they help relevance.
 
-## How to run
+## Monitoring
 
-Requires Docker (with Compose) and an OpenAI API key.
+![Grafana monitoring dashboard](docs/screenshot_grafana.png)
 
-```bash
-git clone https://github.com/abhirup-ghosh/stille-ansprueche.git
-cd stille-ansprueche
-cp .env.example .env   # then edit .env and set OPENAI_API_KEY
+Every conversation (question, answer, language, prompt variant, retrieved benefit ids, relevance
+judgment, tokens, cost, response time) is logged to Postgres (`src/db.py`), and every 👍/👎 click
+is logged to a linked `feedback` table. Grafana (`grafana/dashboards/stille.json`, auto-provisioned)
+has 8 panels, all backed by live SQL against that data:
 
-make up            # builds the app image and starts qdrant, postgres, grafana, app
-make index-docker  # embeds data/documents.jsonl (502 docs) into Qdrant
-make seed          # optional: seeds ~15 demo conversations + feedback for the dashboard
-```
+1. **Total conversations** (stat)
+2. **Conversations per hour** (time series)
+3. **Feedback: 👍 vs 👎** (pie)
+4. **Relevance label distribution** (pie)
+5. **Question language distribution** (bar)
+6. **Avg response time (s)** (time series)
+7. **Cumulative cost (USD)** (time series)
+8. **Top 10 retrieved benefits** (table)
 
-- App: http://localhost:8501
-- Grafana: http://localhost:3000 (admin/admin)
+`make seed` populates ~15 demo conversations + feedback so the dashboard isn't empty on first run.
 
-`make up` always rebuilds the app image (`docker compose up -d --build`), so it also picks up
-code changes on re-runs. This exact sequence has been rehearsed end-to-end from a fresh `git
-clone` in an empty directory (see `docs/PROGRESS.md` / `docs/DEVIATIONS.md` Phase 7 for the bugs
-that rehearsal caught and fixed).
+## Rubric self-assessment
 
-Further sections (architecture, rubric mapping, screenshots) will be filled in as phases complete
-— see `docs/PLAN.md` for the full implementation plan and `docs/PROGRESS.md` for the running log.
+Full evidence-linked mapping in
+[`docs/README_PROJECT_EVALUATION.md`](docs/README_PROJECT_EVALUATION.md), against the official
+course rubric. Summary:
+
+| Criterion | Points claimed | Max |
+|---|---|---|
+| Problem description | 2 | 2 |
+| Retrieval flow (KB + LLM) | 2 | 2 |
+| Retrieval evaluation (multiple, best used) | 2 | 2 |
+| LLM evaluation (multiple, best used) | 2 | 2 |
+| Interface | 2 | 2 |
+| Ingestion pipeline (automated) | 2 | 2 |
+| Monitoring (feedback + dashboard ≥5 charts) | 2 | 2 |
+| Containerization (everything in compose) | 2 | 2 |
+| Reproducibility | 2 | 2 |
+| **Core subtotal** | **18** | **18** |
+| Best practice: hybrid search (evaluated) | 1 | 1 |
+| Best practice: document re-ranking | 1 | 1 |
+| Best practice: query rewriting | 1 | 1 |
+| **Best-practices subtotal** | **3** | **3** |
+| Bonus: cloud deployment | 0 | 2 |
+| **Total claimed** | **21** | 21 (+2 unclaimed) |
+
+## Cost report
+
+Every LLM call goes through `src/llm.py`, which disk-caches by `(model, temperature, messages)`
+so re-running any script is free on a cache hit, and tracks cost per the OpenAI pricing table.
+Summing every unique cached call's token count across every environment this project ran in
+(local `.venv`, the Docker container, and the fresh-clone rehearsal) gives an exact total spend
+of **$0.28** for the whole project — well under the ~$3 target and the $5 hard ceiling:
+
+| Step | Cost |
+|---|---|
+| Ground truth generation (200 docs × 5 questions) | $0.026 |
+| Retrieval evaluation (query rewriting, 1000 questions) | $0.045 |
+| RAG evaluation (300 answers + 600 judge calls) | $0.177 |
+| Demo seeding (`make seed`, 3 runs across environments) | $0.021 |
+| Manual smoke tests during development | ~$0.01 |
+| **Total** | **~$0.28** |
+
+## Limitations & future work
+
+- **Enrichment coverage:** only 49/502 benefits (9.8%) have plain-language portal text; most
+  answers draw on the more legalistic ifo description alone. `docs/FOLLOWUP.md` tracks ideas to
+  improve this (more source sites, deep crawling, fuzzier matching).
+- **No entitlement calculation:** the assistant helps discover *which* benefits might apply, not
+  the exact amount you'd receive. Integrating
+  [GETTSIM](https://github.com/ionos-gettsim/gettsim) (Germany's open-source tax-benefit
+  microsimulation model) is a natural next step for that.
+- **No application form-filling:** unlike CityLAB Berlin's Beyond Forms, this project doesn't
+  help complete an application — it stops at "here's what to look into and where."
+- **Evaluation on synthetic questions:** the ground truth (and RAG judges) are LLM-generated, not
+  real user queries — they may not fully capture how real people phrase confusing situations.
+- **ifo inventory completeness unverified:** `docs/FOLLOWUP.md` also flags an open item to
+  independently cross-check whether the 502-entry ifo inventory is missing any well-known German
+  benefits.

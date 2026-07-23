@@ -109,3 +109,25 @@
   (Playwright, installed temporarily then removed) against both the Streamlit app and the
   Grafana dashboard. Added a "How to run" section to the README with the exact rehearsed
   commands.
+- 2026-07-23: Phase 8 — README, rubric mapping, screenshots complete (final phase). Computed an
+  exact total project OpenAI cost ($0.28) by summing token counts across every `.llm_cache`
+  directory this project ever wrote to (local `.venv`, the main repo's Docker volume, and the
+  rehearsal clone's now-deleted Docker volume, extracted before removing it) — since the disk
+  cache means every unique call only ever cost money once, this is a precise figure, not an
+  estimate. Took final screenshots (`docs/screenshot_app.png`, `docs/screenshot_grafana.png`) via
+  a real headless browser (Playwright, installed temporarily then removed); hit two more
+  screenshot-specific bugs along the way (Streamlit's chat view auto-scrolls to the bottom —
+  fixed by scrolling `[data-testid="stAppScrollToBottomContainer"]` back to 0 before capturing;
+  Grafana's dashboard-refresh websocket keeps `networkidle` from ever resolving — switched to
+  `wait_until="load"` + an explicit element wait). Rewrote `README.md` in full: problem
+  description, dataset, mermaid architecture diagram, how-to-run, both eval sections, monitoring,
+  a condensed rubric table, the cost report, and limitations/future work (enrichment coverage,
+  no entitlement calculation → GETTSIM, no form-filling → Beyond Forms, synthetic-question
+  evaluation, ifo-completeness unverified — cross-referencing `docs/FOLLOWUP.md`). Also wrote
+  `docs/README_PROJECT_EVALUATION.md`, fulfilling a request the human made before Phase 2 (an
+  edit attempt to log it in PLAN.md itself was rejected mid-edit at the time, but the underlying
+  document request stood) — mapped against the *actual* fetched course rubric rather than
+  PLAN.md's approximate placeholder table; claims 18 core + 3 best-practice points, explicitly
+  leaves the cloud-deployment bonus unclaimed, and lists (without self-awarding) candidate
+  reasons for the open-ended extra-bonus points. Notebook was already empty, nothing to clear.
+  Final `make test`: 9 passed.

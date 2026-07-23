@@ -87,3 +87,19 @@
   make seed` end-to-end, confirmed via `docker compose exec postgres psql` (15 rows, matching
   the seed count exactly, i.e. no leftover state) and a real browser session (Playwright,
   installed temporarily then removed) against both the app and the Grafana dashboard.
+
+- **Phase 8 — `docs/README_PROJECT_EVALUATION.md` (instruction outside PLAN.md, from before
+  Phase 2):** the human asked, before Phase 2 started, for a standalone document mapping this
+  project against the *actual* evaluation criteria at
+  https://github.com/abhirup-ghosh/llm-zoomcamp/blob/main/project.md — for a reviewer to
+  quickly check off each rubric line with evidence of where/how it's implemented. An initial
+  attempt to also write this requirement into `docs/PLAN.md` itself was rejected mid-edit by the
+  human (who then said to continue with the phases); the underlying document request was not
+  rescinded, so it's fulfilled now in Phase 8, where the rubric table naturally belongs.
+  `docs/README_PROJECT_EVALUATION.md` uses the real fetched rubric text (core criteria, "Best
+  practices" checkboxes, and "Bonus points") rather than PLAN.md's own approximate placeholder
+  table in §Phase 8 — the two mostly agree (18 core + 3 best-practice points), but the real
+  rubric additionally has an explicit cloud-deployment bonus (correctly marked unclaimed/0) and
+  an open-ended "up to 3 extra" bonus (left to reviewer discretion, with candidate reasons listed
+  rather than presumptuously self-awarded). The condensed table in the main `README.md` is a
+  summary of this document, not an independently-derived duplicate.
