@@ -1,0 +1,19 @@
+apiVersion: 1
+
+datasources:
+  - name: Postgres
+    uid: stille_postgres
+    type: postgres
+    access: proxy
+    url: postgres:5432
+    database: stille
+    user: stille
+    isDefault: true
+    editable: true
+    secureJsonData:
+      password: stille_local_pw
+    jsonData:
+      database: stille
+      sslmode: disable
+      postgresVersion: 1600
+      timescaledb: false

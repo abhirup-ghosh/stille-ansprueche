@@ -40,3 +40,16 @@
      (`python -m src.*`, pytest). Verified fix by driving the running app in a real (headless)
      browser via Playwright — installed temporarily into `.venv` for that check only, then
      uninstalled; it is not a project dependency and is not in `requirements.txt`.
+
+- **Phase 6:** the Grafana Postgres datasource provisioning YAML needed `database: stille`
+  nested under `jsonData`, not only as a top-level key next to `url`/`user` — the installed
+  `grafana/grafana:latest` (13.1.1) Postgres plugin's dashboard-panel query path otherwise
+  refuses every panel with "You do not currently have a default database configured for this
+  data source", even though a manual `/api/ds/query` HTTP call against the same datasource UID
+  (bypassing the dashboard's own panel-rendering code) had returned real rows with the pre-fix
+  config. That gap is exactly why this was caught by actually opening the provisioned dashboard
+  in a real (headless) browser via Playwright (installed temporarily, then uninstalled, same as
+  Phase 5) instead of trusting the API smoke test alone. Also added `"rawQuery": true,
+  "editorMode": "code"` to every panel target in `grafana/dashboards/stille.json` — without it
+  the SQL datasource plugin ignores `rawSql` and tries to use the (empty) visual query builder
+  instead.

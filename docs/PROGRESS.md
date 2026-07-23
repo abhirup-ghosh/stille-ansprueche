@@ -78,3 +78,19 @@
   into `sys.path` at the top of `app.py`. Confirmed via `docker compose exec postgres psql`: 2
   conversation rows, 2 feedback rows, `retrieved_ids`/`prompt_variant`/`relevance` all populated
   correctly (`v_best` correctly resolved to `einfache_sprache`).
+- 2026-07-23: Phase 6 — Grafana dashboard complete. Added `grafana` service to
+  `docker-compose.yml` (admin/admin, provisioning + dashboards volumes mounted).
+  `grafana/provisioning/datasources/datasource.yml` (Postgres, uid `stille_postgres`),
+  `grafana/provisioning/dashboards/dashboards.yml` (file provider), `grafana/dashboards/stille.json`
+  with all 8 required panels (total conversations, conversations/hour, feedback pie,
+  relevance-label pie, response-time-avg time series, cumulative-cost time series,
+  question-language bar chart, top-10-retrieved-benefits table). `src/seed_traffic.py` runs 15
+  random ground-truth questions through `rag.answer()` with skewed-positive random feedback
+  (`make seed`), cost $0.007. Hit two real provisioning bugs, both only visible by opening the
+  actual dashboard in a real (headless) browser (Playwright, installed temporarily then removed)
+  — a plain `/api/ds/query` HTTP smoke test had misleadingly looked fine: (1) the Postgres
+  datasource needs `database` nested under `jsonData`, not only as a top-level key, or every
+  panel fails with "no default database configured"; (2) every panel target needs `"rawQuery":
+  true, "editorMode": "code"` or the SQL plugin ignores `rawSql` entirely. Both fixed; final
+  screenshot confirms all 8 panels populated with real data (17 conversations) and zero browser
+  console errors. Full detail in `docs/DEVIATIONS.md`.
