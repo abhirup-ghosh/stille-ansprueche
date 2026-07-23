@@ -129,7 +129,6 @@ stille-ansprueche/
 │   ├── PLAN.md                 # this file — moved here from root, see note below
 │   ├── PROGRESS.md              # running log — moved here from root
 │   ├── FOLLOWUP.md              # tracks post-submission follow-ups, outside this plan's scope
-│   ├── README_PROJECT_EVALUATION.md  # rubric-by-rubric evidence mapping for reviewers (Phase 8)
 │   ├── screenshot_app.png       # Phase 8
 │   └── screenshot_grafana.png   # Phase 8
 ├── LICENSE                    # MIT for the code
@@ -858,16 +857,16 @@ README structure (write fully):
 | Bonus: document re-ranking | 1 | CrossEncoder in `search_hybrid_rerank` |
 | Bonus: query rewriting | 1 | `rewrite_query` + evaluated as its own strategy |
 
-**As actually built — `docs/README_PROJECT_EVALUATION.md` (instruction outside this plan, given
-by the human before Phase 2):** the human asked, before Phase 2 started, for a standalone
-document mapping this project against the *actual* evaluation criteria at
-https://github.com/abhirup-ghosh/llm-zoomcamp/blob/main/project.md, so a reviewer can quickly
-check off each rubric line with evidence of where/how it's implemented. That real rubric mostly
-matches the placeholder table above (18 core + 3 best-practice points) but additionally has an
-explicit cloud-deployment bonus (marked unclaimed/0 here) and an open-ended "up to 3 extra"
-bonus (left to reviewer discretion in that document, with candidate reasons listed rather than
-presumptuously self-awarded). `docs/README_PROJECT_EVALUATION.md` is the authoritative,
-evidence-linked version; the table above and the condensed one in `README.md` summarize it.
+**As actually built (instruction outside this plan, given by the human before Phase 2, later
+reversed):** the human asked, before Phase 2 started, for a standalone
+`docs/README_PROJECT_EVALUATION.md` mapping this project against the *actual* evaluation
+criteria at https://github.com/abhirup-ghosh/llm-zoomcamp/blob/main/project.md, so a reviewer
+could quickly check off each rubric line with evidence. That real rubric mostly matches the
+placeholder table above (18 core + 3 best-practice points) but additionally has an explicit
+cloud-deployment bonus and an open-ended "up to 3 extra" bonus. The document was written in
+Phase 8, then the human asked to remove it entirely — the rubric table now lives only in
+`README.md` (with an added Evidence column so nothing was lost), and this plan's placeholder
+table above stays as the original pinned reference.
 
 Also in Phase 8:
 - Add 2 screenshots (`docs/screenshot_app.png`, `docs/screenshot_grafana.png`) — taken via a
@@ -920,5 +919,5 @@ note (client-side BM25 chosen for simplicity, not because the server-side path w
 - Fresh-clone rehearsal (Phase 7) passes. ✅ (on the third attempt, after three fixes — see
   Phase 7)
 - README rubric table claims 18 core + 3 bonus points, and every claim is verifiable in-repo. ✅
-  (21 total claimed; full evidence in `docs/README_PROJECT_EVALUATION.md`)
+  (21 total claimed, with an Evidence column directly in `README.md`'s "Rubric self-assessment")
 - Total OpenAI cost < $5 (expected < $3), reported in README. ✅ ($0.28 actual, computed exactly)

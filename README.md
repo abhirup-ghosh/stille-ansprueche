@@ -2,9 +2,6 @@
 
 *Discover German social benefits (Sozialleistungen) you may be entitled to but don't know exist.*
 
-> See [`docs/README_PROJECT_EVALUATION.md`](docs/README_PROJECT_EVALUATION.md) for the full
-> rubric-by-rubric evaluation mapping — a fast path for reviewers.
-
 ![Stille Ansprüche app screenshot](docs/screenshot_app.png)
 
 ## Problem
@@ -203,28 +200,27 @@ has 8 panels, all backed by live SQL against that data:
 
 ## Rubric self-assessment
 
-Full evidence-linked mapping in
-[`docs/README_PROJECT_EVALUATION.md`](docs/README_PROJECT_EVALUATION.md), against the official
-course rubric. Summary:
+Against the official DataTalksClub LLM Zoomcamp rubric
+(https://github.com/abhirup-ghosh/llm-zoomcamp/blob/main/project.md).
 
-| Criterion | Points claimed | Max |
-|---|---|---|
-| Problem description | 2 | 2 |
-| Retrieval flow (KB + LLM) | 2 | 2 |
-| Retrieval evaluation (multiple, best used) | 2 | 2 |
-| LLM evaluation (multiple, best used) | 2 | 2 |
-| Interface | 2 | 2 |
-| Ingestion pipeline (automated) | 2 | 2 |
-| Monitoring (feedback + dashboard ≥5 charts) | 2 | 2 |
-| Containerization (everything in compose) | 2 | 2 |
-| Reproducibility | 2 | 2 |
-| **Core subtotal** | **18** | **18** |
-| Best practice: hybrid search (evaluated) | 1 | 1 |
-| Best practice: document re-ranking | 1 | 1 |
-| Best practice: query rewriting | 1 | 1 |
-| **Best-practices subtotal** | **3** | **3** |
-| Bonus: cloud deployment | 0 | 2 |
-| **Total claimed** | **21** | 21 (+2 unclaimed) |
+| Criterion | Points | Max | Evidence |
+|---|---|---|---|
+| Problem description | 2 | 2 | "Problem" section above |
+| Retrieval flow (KB + LLM) | 2 | 2 | `src/search.py` (Qdrant) feeds `src/rag.py` (`gpt-4o-mini`) |
+| Retrieval evaluation (multiple, best used) | 2 | 2 | "Retrieval evaluation" section; winner wired as `search_best` |
+| LLM evaluation (multiple, best used) | 2 | 2 | "RAG evaluation" section; winner wired as `PROMPT_VBEST` |
+| Interface | 2 | 2 | Streamlit UI, `app/app.py` |
+| Ingestion pipeline (automated) | 2 | 2 | `make ingest` → `src/ingest_ifo.py` → `enrich_portals.py` → `build_corpus.py`, no manual steps |
+| Monitoring (feedback + dashboard ≥5 charts) | 2 | 2 | 👍/👎 → Postgres; 8-panel Grafana dashboard, see "Monitoring" |
+| Containerization (everything in compose) | 2 | 2 | `docker-compose.yml`: qdrant, postgres, grafana, app |
+| Reproducibility | 2 | 2 | Pinned `requirements.txt`; fresh-clone rehearsal passed 3x, see "How to run" |
+| **Core subtotal** | **18** | **18** | |
+| Best practice: hybrid search (evaluated) | 1 | 1 | `search_hybrid()` — RRF fusion, dense+BM25 |
+| Best practice: document re-ranking | 1 | 1 | `search_hybrid_rerank()` — CrossEncoder |
+| Best practice: query rewriting | 1 | 1 | `rewrite_query()` / `search_hybrid_rewritten()` |
+| **Best-practices subtotal** | **3** | **3** | |
+| Bonus: cloud deployment | 0 | 2 | Out of scope — runs locally / via docker-compose only |
+| **Total claimed** | **21** | 21 (+2 unclaimed) | |
 
 ## Cost report
 

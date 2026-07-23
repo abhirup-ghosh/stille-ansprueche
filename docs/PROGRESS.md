@@ -139,3 +139,9 @@
   to `docs/DEVIATIONS.md` in `README.md`, `docs/PROGRESS.md` (this file), and
   `docs/README_PROJECT_EVALUATION.md` to point at the relevant `docs/PLAN.md` phase section
   instead. `make test`: 9 passed, unaffected.
+- 2026-07-23: Post-submission cleanup (2) — `docs/README_PROJECT_EVALUATION.md` removed
+  entirely, per direct instruction ("don't need it"). The rubric table now lives only in
+  `README.md`'s "Rubric self-assessment" section, expanded with an inline Evidence column so no
+  information was lost. Fixed the resulting references in `README.md` (dropped the top-of-file
+  callout and the "full mapping in..." lead-in) and `docs/PLAN.md` (Phase 8 section, §3 repo
+  tree, §15 definition of done). `make test`: 9 passed, unaffected.
