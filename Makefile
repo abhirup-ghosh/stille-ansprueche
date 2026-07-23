@@ -28,7 +28,7 @@ app:
 	. .venv/bin/activate && streamlit run app/app.py
 
 seed:
-	. .venv/bin/activate && python -m src.seed_traffic
+	docker compose run --rm app python -m src.seed_traffic
 
 test:
 	. .venv/bin/activate && pytest; code=$$?; [ $$code -eq 5 ] && exit 0 || exit $$code
