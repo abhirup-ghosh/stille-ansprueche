@@ -29,6 +29,34 @@ services:
     depends_on:
       - postgres
 
+  app:
+    build: .
+    ports:
+      - "${APP_PORT:-8501}:8501"
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-benefits}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-stille}
+      POSTGRES_USER: ${POSTGRES_USER:-stille}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stille_local_pw}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-intfloat/multilingual-e5-small}
+      RERANKER_MODEL: ${RERANKER_MODEL:-cross-encoder/mmarco-mMiniLMv2-L12-H384-v1}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      APP_PORT: ${APP_PORT:-8501}
+    volumes:
+      - ./data:/app/data:ro
+      # LLM disk cache (src/llm.py) needs to write; nesting a writable named volume inside the
+      # otherwise-read-only ./data mount keeps the committed corpus itself protected.
+      - llm_cache:/app/data/.llm_cache
+    depends_on:
+      - qdrant
+      - postgres
+      - grafana
+
 volumes:
   qdrant_data:
   pg_data:
+  llm_cache:
