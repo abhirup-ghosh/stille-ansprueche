@@ -34,7 +34,7 @@ test:
 	. .venv/bin/activate && pytest; code=$$?; [ $$code -eq 5 ] && exit 0 || exit $$code
 
 up:
-	docker compose up -d
+	docker compose up -d --build
 
 down:
 	docker compose down
