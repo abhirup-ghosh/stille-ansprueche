@@ -94,3 +94,18 @@
   true, "editorMode": "code"` or the SQL plugin ignores `rawSql` entirely. Both fixed; final
   screenshot confirms all 8 panels populated with real data (17 conversations) and zero browser
   console errors. Full detail in `docs/DEVIATIONS.md`.
+- 2026-07-23: Phase 7 — full containerization + reproducibility rehearsal complete. Added
+  `Dockerfile` (python:3.11-slim, pinned deps, pre-downloads the E5 + CrossEncoder models in a
+  build layer) and the `app` service in `docker-compose.yml`. Pinned `requirements.txt` to exact
+  installed versions via `pip freeze`. Ran the literal fresh-clone rehearsal (`git clone` into an
+  empty `/tmp` dir, real `.env`, `make up && make index-docker && make seed`) — it failed 3
+  different ways on the first two attempts, each only visible from a truly fresh clone/host
+  state, not from continuing to work in the already-set-up repo directory: a nested-volume-in-
+  read-only-mount bug (LLM cache), `make seed` assuming a local venv that doesn't exist in a
+  docker-only environment, and `docker compose up -d` silently reusing a stale app image instead
+  of rebuilding. All three fixed (see `docs/DEVIATIONS.md` for detail); a third fully-fresh
+  clone then passed the whole sequence end-to-end, confirmed via `docker compose exec postgres
+  psql` (row counts matched the seed exactly — no leftover state) and a real browser session
+  (Playwright, installed temporarily then removed) against both the Streamlit app and the
+  Grafana dashboard. Added a "How to run" section to the README with the exact rehearsed
+  commands.

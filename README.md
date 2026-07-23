@@ -2,7 +2,7 @@
 
 *Discover German social benefits (Sozialleistungen) you may be entitled to but don't know exist.*
 
-**Status:** under construction (Phase 4 — RAG flow + prompt evaluation complete).
+**Status:** under construction (Phase 7 — full containerization + reproducibility rehearsal complete).
 
 ## Problem
 
@@ -89,5 +89,27 @@ judge penalizes most (36%, the worst of the three). `baseline` sits in between o
 faithfulness. In short: for this grounded-answer use case, verbosity and structure trade off
 against faithfulness more than they help relevance.
 
-Further sections (architecture, how to run, rubric mapping) will be filled in as phases complete
+## How to run
+
+Requires Docker (with Compose) and an OpenAI API key.
+
+```bash
+git clone https://github.com/abhirup-ghosh/stille-ansprueche.git
+cd stille-ansprueche
+cp .env.example .env   # then edit .env and set OPENAI_API_KEY
+
+make up            # builds the app image and starts qdrant, postgres, grafana, app
+make index-docker  # embeds data/documents.jsonl (502 docs) into Qdrant
+make seed          # optional: seeds ~15 demo conversations + feedback for the dashboard
+```
+
+- App: http://localhost:8501
+- Grafana: http://localhost:3000 (admin/admin)
+
+`make up` always rebuilds the app image (`docker compose up -d --build`), so it also picks up
+code changes on re-runs. This exact sequence has been rehearsed end-to-end from a fresh `git
+clone` in an empty directory (see `docs/PROGRESS.md` / `docs/DEVIATIONS.md` Phase 7 for the bugs
+that rehearsal caught and fixed).
+
+Further sections (architecture, rubric mapping, screenshots) will be filled in as phases complete
 — see `docs/PLAN.md` for the full implementation plan and `docs/PROGRESS.md` for the running log.

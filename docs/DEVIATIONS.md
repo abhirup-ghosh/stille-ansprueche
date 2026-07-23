@@ -53,3 +53,37 @@
   "editorMode": "code"` to every panel target in `grafana/dashboards/stille.json` — without it
   the SQL datasource plugin ignores `rawSql` and tries to use the (empty) visual query builder
   instead.
+
+- **Phase 7:** the literal fresh-clone rehearsal (`git clone` into an empty `/tmp` dir, `.env`
+  from example + real key, `make up && make index-docker && make seed`) failed three separate
+  ways on the *first* attempt, none of which showed up in earlier phases because the local repo
+  directory already had the state each fix now handles generically:
+  1. **Nested volume in a read-only mount doesn't work on a fresh host.** The `app` service
+     originally mounted `./data:/app/data:ro` plus a named volume nested at
+     `/app/data/.llm_cache` for the writable LLM disk cache. This worked in the original repo
+     directory (where `data/.llm_cache/` already existed on the host from local runs) but fails
+     on a truly fresh clone with "read-only file system" trying to create the mountpoint, since
+     Docker can't create a directory inside an already-read-only bind mount. Fixed by moving the
+     cache to a wholly separate path: `src/config.py` gained `LLM_CACHE_DIR` (overridable via
+     env var, defaults to `data/.llm_cache` for local runs), `src/llm.py` uses it instead of a
+     hardcoded path, and `docker-compose.yml` mounts a named volume at `/app/llm_cache` (a
+     sibling of `/app/data`, not nested inside it) with `LLM_CACHE_DIR=/app/llm_cache` for the
+     `app` service.
+  2. **`make seed` assumed a local Python venv.** Its original Makefile target activated
+     `.venv/bin/activate`, which doesn't exist on a fresh clone that only ever ran things through
+     Docker. Changed to `docker compose run --rm app python -m src.seed_traffic`, matching
+     `index-docker`'s pattern.
+  3. **`docker compose up -d` silently reuses a stale image.** Compose only builds an image if
+     one doesn't already exist under the project's derived image name; re-running `make up`
+     after a code change (or, as tested here, a second fresh-clone attempt reusing the same
+     `/tmp` directory name) kept the *old* image without rebuilding, so a `config.py` fix that
+     was already pushed and cloned still wasn't present inside the running container. Fixed by
+     changing the `up` Makefile target to `docker compose up -d --build`.
+
+  All three were only caught because the rehearsal was actually run twice from a clean `/tmp`
+  clone (first attempt surfaced #1, second attempt after fixing #1 and #2 surfaced #3) — a
+  README/API-level check alone would have missed all of them. After all three fixes, a third
+  fully-fresh clone (`rm -rf` + re-clone + fresh `.env`) passed `make up && make index-docker &&
+  make seed` end-to-end, confirmed via `docker compose exec postgres psql` (15 rows, matching
+  the seed count exactly, i.e. no leftover state) and a real browser session (Playwright,
+  installed temporarily then removed) against both the app and the Grafana dashboard.
