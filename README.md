@@ -2,7 +2,7 @@
 
 *Discover German social benefits (Sozialleistungen) you may be entitled to but don't know exist.*
 
-**Status:** under construction (Phase 3 — ground truth + retrieval evaluation complete).
+**Status:** under construction (Phase 4 — RAG flow + prompt evaluation complete).
 
 ## Problem
 
@@ -53,6 +53,41 @@ scores. Query rewriting (`hybrid_rewritten`) helps hybrid (0.125 → 0.145) but 
 alone. All strategies degrade on English questions vs. German (expected — the corpus and E5
 embeddings are strongest in German), and query rewriting narrows but doesn't close that gap.
 
-Further sections (architecture, RAG evaluation, how to run, rubric mapping) will be filled in as
-phases complete — see `docs/PLAN.md` for the full implementation plan and `docs/PROGRESS.md` for
-the running log.
+## RAG evaluation
+
+The RAG flow (`src/rag.py`) retrieves with `search_best` (dense vector, per above), builds a
+context block from the top-k hits, and sends one structured-output LLM call (`gpt-4o-mini`,
+temperature 0.3) that returns the answer plus which benefits it drew on. All 3 prompt variants
+share the same hard grounding rules (answer only from context, never invent amounts/deadlines/
+conditions, cite the legal norm and link, answer in the question's language, end with the
+non-legal-advice disclaimer) and differ only in style:
+
+- **baseline** — "answer helpfully and correctly"
+- **einfache_sprache** — Einfache Sprache: short sentences (≤~12 words), no unexplained jargon, numbered next steps
+- **structured** — fixed sections: short answer, matching benefits with reasons, next steps, sources
+
+Evaluated on 100 sampled ground-truth questions (80 de / 20 en, seed 42) × 3 variants = 300
+answers, each judged twice by `gpt-4o-mini` (temperature 0): a **relevance** judge
+(RELEVANT/PARTLY_RELEVANT/NON_RELEVANT against the question) and a **faithfulness** judge
+(FAITHFUL/MINOR_UNSUPPORTED/HALLUCINATED against the retrieved context) — 900 LLM calls total,
+$0.18. Full results in `data/eval/rag_results.csv`.
+
+| variant | %relevant | %faithful | mean_sentence_len | mean_cost_usd | mean_time_s |
+|---|---|---|---|---|---|
+| baseline | 91.0% | 41.0% | 14.2 | 0.00068 | 4.13 |
+| **einfache_sprache** | **87.0%** | **57.0%** | **6.1** | **0.00059** | **3.37** |
+| structured | 80.0% | 36.0% | 17.2 | 0.00050 | 2.52 |
+
+**Winner: `einfache_sprache`** (57% faithful, highest; also cheapest and fastest among the two
+close contenders), set as `PROMPT_VBEST` in `src/rag.py`. Relevance is high across the board
+(80–91%) — retrieval quality, not prompt style, is the bottleneck there. Faithfulness is what
+separates the variants: `einfache_sprache`'s short, simple sentences (mean 6.1 words) leave much
+less room for the model to elaborate beyond the context, while `structured`'s multi-section
+format (mean 17.2 words/sentence) — asking for reasoning per benefit and separate "next steps" —
+invites more inferred detail not strictly grounded in the retrieved text, which the faithfulness
+judge penalizes most (36%, the worst of the three). `baseline` sits in between on both length and
+faithfulness. In short: for this grounded-answer use case, verbosity and structure trade off
+against faithfulness more than they help relevance.
+
+Further sections (architecture, how to run, rubric mapping) will be filled in as phases complete
+— see `docs/PLAN.md` for the full implementation plan and `docs/PROGRESS.md` for the running log.

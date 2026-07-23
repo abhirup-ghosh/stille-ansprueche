@@ -50,3 +50,18 @@
   the benefit's official name, so BM25 (`text` strategy, MRR@5=0.025) contributes mostly noise,
   and naive RRF fusion in `hybrid` lets that noise drag vector-only performance down; reranking
   recovers most but not all of the gap. Full interpretation in README "Retrieval evaluation".
+- 2026-07-23: Phase 4 — RAG flow + 3-prompt evaluation complete. `src/rag.py`: `search_best`
+  (dense vector) → context block → one structured-output LLM call (`gpt-4o-mini`, temp 0.3)
+  returning `RagAnswer` (answer, benefits_mentioned, sources, cost/timing/tokens). 3 prompt
+  variants (`baseline`, `einfache_sprache`, `structured`) share the same grounding rules. Ran
+  `src/eval_rag.py`: 100 sampled questions (80 de / 20 en, seed 42) × 3 variants × (1 answer + 2
+  LLM judges: relevance, faithfulness) = 900 calls, cost $0.18, `data/eval/rag_results.csv`
+  (300 rows, all judged). Background run took much longer wall-clock than expected (likely the
+  laptop slept mid-run); re-verified output integrity afterward — no missing judgments, cost/
+  timing figures all sane. **Result: `einfache_sprache` wins (57% faithful)** vs. baseline (41%)
+  and structured (36%) — `PROMPT_VBEST` updated in `src/rag.py`. Relevance was high across all
+  variants (80–91%, so retrieval quality is the bottleneck there, not prompt style); faithfulness
+  is what separated them, with shorter/simpler sentences leaving less room for the model to
+  elaborate beyond the retrieved context. Smoke test passes: `answer()` on the Rentnerin/Miete
+  question returns a German answer naming plausible benefits and ending with the disclaimer
+  sentence. Full interpretation in README "RAG evaluation".
