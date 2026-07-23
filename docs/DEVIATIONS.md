@@ -27,3 +27,16 @@
      `wohngeld-3f2a`) are neither, so each point's id is a `uuid.uuid5` deterministically derived
      from the document id. The original id is unaffected in the payload (`payload["id"]`), which
      is what all downstream code (search, eval, RAG) reads.
+
+- **Phase 5:** two small adaptations:
+  1. `RagAnswer.sources` (`src/rag.py`) gained an extra `"id"` key per source dict beyond the
+     plan's literal `{"name":..., "legal_norm":..., "official_url":...}` shape. Needed so the
+     Streamlit app and `src/db.py` can populate the `conversations.retrieved_ids` column without
+     re-deriving ids from names; purely additive, doesn't remove/rename any documented field.
+  2. `app/app.py` inserts `sys.path.insert(0, <repo root>)` before importing `src.*`. Caught
+     during browser testing: `streamlit run app/app.py` sets `sys.path[0]` to `app/`'s own
+     directory (not the repo root, unlike `python -m`), so `from src import db` raised
+     `ModuleNotFoundError` at runtime despite working fine from every other entry point
+     (`python -m src.*`, pytest). Verified fix by driving the running app in a real (headless)
+     browser via Playwright — installed temporarily into `.venv` for that check only, then
+     uninstalled; it is not a project dependency and is not in `requirements.txt`.

@@ -110,7 +110,7 @@ KONTEXT:
     response_time_s = time.monotonic() - start
 
     sources = [
-        {"name": hit["name"], "legal_norm": hit["legal_norm"], "official_url": hit.get("official_url")}
+        {"id": hit["id"], "name": hit["name"], "legal_norm": hit["legal_norm"], "official_url": hit.get("official_url")}
         for hit in hits
     ]
 

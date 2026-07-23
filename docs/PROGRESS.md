@@ -65,3 +65,16 @@
   elaborate beyond the retrieved context. Smoke test passes: `answer()` on the Rentnerin/Miete
   question returns a German answer naming plausible benefits and ending with the disclaimer
   sentence. Full interpretation in README "RAG evaluation".
+- 2026-07-23: Phase 5 — Streamlit app + Postgres logging complete. Added `postgres` service to
+  `docker-compose.yml`; `src/db.py` creates `conversations`/`feedback` tables verbatim per plan
+  and exposes insert/update helpers. `app/app.py`: title/disclaimer/chat UI over `rag.answer()`,
+  sidebar (prompt variant, k, debug context toggle), 👍/👎 feedback buttons, relevance judged
+  inline (wrapped in try/except so a judging failure can't break the app). Verified end-to-end
+  in a real headless browser (Playwright, installed temporarily then removed — not a project
+  dependency): submitted the Rentnerin/Miete question, got a rendered answer + Quellen expander,
+  clicked 👍, saw "Danke für dein Feedback!", zero console errors. Caught and fixed a real bug
+  this way: `streamlit run app/app.py` doesn't put the repo root on `sys.path` the way `python -m`
+  does, so `from src import db` raised `ModuleNotFoundError` — fixed by inserting the repo root
+  into `sys.path` at the top of `app.py`. Confirmed via `docker compose exec postgres psql`: 2
+  conversation rows, 2 feedback rows, `retrieved_ids`/`prompt_variant`/`relevance` all populated
+  correctly (`v_best` correctly resolved to `einfache_sprache`).
