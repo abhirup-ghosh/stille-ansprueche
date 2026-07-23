@@ -46,11 +46,13 @@ services:
       RERANKER_MODEL: ${RERANKER_MODEL:-cross-encoder/mmarco-mMiniLMv2-L12-H384-v1}
       LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
       APP_PORT: ${APP_PORT:-8501}
+      LLM_CACHE_DIR: /app/llm_cache
     volumes:
       - ./data:/app/data:ro
-      # LLM disk cache (src/llm.py) needs to write; nesting a writable named volume inside the
-      # otherwise-read-only ./data mount keeps the committed corpus itself protected.
-      - llm_cache:/app/data/.llm_cache
+      # LLM disk cache (src/llm.py) needs to write; kept outside the read-only ./data mount
+      # (rather than nested inside it) so a fresh clone with no pre-existing host directory
+      # doesn't hit "read-only file system" trying to create the mountpoint.
+      - llm_cache:/app/llm_cache
     depends_on:
       - qdrant
       - postgres

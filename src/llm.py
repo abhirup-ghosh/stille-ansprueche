@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from src import config
 
-CACHE_DIR = config.DATA_DIR / ".llm_cache"
+CACHE_DIR = config.LLM_CACHE_DIR
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 # USD per 1M tokens

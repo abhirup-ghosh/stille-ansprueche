@@ -8,6 +8,8 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).parent.parent
 DATA_DIR = BASE_DIR / "data"
+# Overridable so it can live outside the (often read-only-mounted) DATA_DIR in containers.
+LLM_CACHE_DIR = Path(os.getenv("LLM_CACHE_DIR", str(DATA_DIR / ".llm_cache")))
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
